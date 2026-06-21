@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,6 +17,13 @@
 
   .container { max-width: 720px; margin: 0 auto; }
 
+  .header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
   .badge {
     display: inline-block;
     background: #161b22;
@@ -27,9 +34,31 @@
     color: #58a6ff;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    margin-bottom: 12px;
     font-family: monospace;
   }
+
+  .lang-switcher { display: flex; gap: 4px; }
+
+  .lang-btn {
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid #30363d;
+    background: transparent;
+    color: #8b949e;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .lang-btn.active {
+    border-color: #58a6ff;
+    background: #1f3a5f;
+    color: #58a6ff;
+  }
+
+  .lang-btn:hover:not(.active) { border-color: #58a6ff; color: #58a6ff; }
 
   h1 {
     font-size: 28px;
@@ -76,9 +105,7 @@
     transition: border-color 0.15s;
   }
 
-  input[type="text"]:focus, input[type="number"]:focus {
-    border-color: #58a6ff;
-  }
+  input[type="text"]:focus, input[type="number"]:focus { border-color: #58a6ff; }
 
   input[type="number"] { font-family: inherit; letter-spacing: normal; }
 
@@ -149,7 +176,7 @@
   }
 
   .btn-generate {
-    width: 100%;
+    flex: 1;
     padding: 12px;
     border-radius: 6px;
     border: none;
@@ -163,6 +190,22 @@
   }
 
   .btn-generate:hover { opacity: 0.85; }
+
+  .btn-reset {
+    padding: 12px 18px;
+    border-radius: 6px;
+    border: 1px solid #30363d;
+    background: transparent;
+    color: #8b949e;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .btn-reset:hover { border-color: #58a6ff; color: #58a6ff; }
 
   .result-header {
     display: flex;
@@ -253,26 +296,33 @@
 <body>
 <div class="container">
 
-  <div class="badge">Network Tool</div>
+  <div class="header-row">
+    <div class="badge">Network Tool</div>
+    <div class="lang-switcher">
+      <button class="lang-btn" id="lang-zhTW" onclick="setLang('zh-TW')">中文</button>
+      <button class="lang-btn active" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+
   <h1>MAC Address Generator</h1>
-  <p class="subtitle">批量產生連續 MAC 位址並匯出 CSV</p>
+  <p class="subtitle" id="subtitle">Generate sequential MAC addresses and export as CSV</p>
 
   <div class="card">
     <div class="grid">
       <div>
-        <label>OUI（前三組，代表廠商）<span class="hint">例：00:17:16</span></label>
-        <input type="text" id="oui" value="00:17:16" placeholder="00:17:16" maxlength="8">
+        <label><span id="oui-label-text">OUI (First 3 octets, vendor)</span><span class="hint" id="oui-hint">e.g. 00:00:00</span></label>
+        <input type="text" id="oui" value="00:00:00" placeholder="00:00:00" maxlength="8">
       </div>
       <div>
-        <label>起始 NIC（後三組）<span class="hint">例：00:17:16</span></label>
-        <input type="text" id="nic" value="00:17:16" placeholder="00:17:16" maxlength="8">
+        <label><span id="nic-label-text">Start NIC (Last 3 octets)</span><span class="hint" id="nic-hint">e.g. 00:00:00</span></label>
+        <input type="text" id="nic" value="00:00:00" placeholder="00:00:00" maxlength="8">
       </div>
       <div>
-        <label>產生數量<span class="hint">1 ~ 10000</span></label>
+        <label><span id="count-label-text">Count</span><span class="hint">1 ~ 10000</span></label>
         <input type="number" id="count" value="10" min="1" max="10000">
       </div>
       <div>
-        <label>分隔符號</label>
+        <label id="sep-label-text">Separator</label>
         <div class="sep-group">
           <button class="sep-btn active" data-sep=":" onclick="setSep(this)">AA:BB:CC</button>
           <button class="sep-btn" data-sep="-" onclick="setSep(this)">AA-BB-CC</button>
@@ -283,20 +333,23 @@
 
     <div class="toggle-row">
       <button class="toggle on" id="caseToggle" onclick="toggleCase()"></button>
-      <span class="toggle-label" id="caseLabel">大寫輸出（AA:BB:CC）</span>
+      <span class="toggle-label" id="caseLabel">Uppercase (AA:BB:CC)</span>
     </div>
 
     <div class="error" id="error"></div>
 
-    <button class="btn-generate" onclick="generate()">▶ 產生 MAC 位址</button>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-generate" id="btn-generate" onclick="generate()">▶ Generate MAC</button>
+      <button class="btn-reset" id="btn-reset" onclick="resetToDefault()">↺ Reset</button>
+    </div>
   </div>
 
   <div class="card" id="result-card">
     <div class="result-header">
-      <span class="result-count">已產生 <span id="result-count">0</span> 組 MAC</span>
+      <span class="result-count" id="result-count-wrap">Generated <span id="result-count">0</span> MACs</span>
       <div class="action-btns">
-        <button class="btn-ghost" id="copyBtn" onclick="copyAll()">複製全部</button>
-        <button class="btn-primary" onclick="downloadCSV()">↓ 下載 CSV</button>
+        <button class="btn-ghost" id="copyBtn" onclick="copyAll()">Copy All</button>
+        <button class="btn-primary" id="btn-download" onclick="downloadCSV()">↓ Download CSV</button>
       </div>
     </div>
     <div class="mac-list" id="mac-list"></div>
@@ -308,6 +361,82 @@
   let currentSep = ':';
   let isUpper = true;
   let allMacs = [];
+  let currentLang = 'en';
+
+  const i18n = {
+    'zh-TW': {
+      subtitle:      '批量產生連續 MAC 位址並匯出 CSV',
+      oui_label:     'OUI（前三組，代表廠商）',
+      nic_label:     '起始 NIC（後三組）',
+      hint_eg:       '例：00:00:00',
+      count_label:   '產生數量',
+      sep_label:     '分隔符號',
+      case_upper:    '大寫輸出（AA:BB:CC）',
+      case_lower:    '小寫輸出（aa:bb:cc）',
+      btn_generate:  '▶ 產生 MAC 位址',
+      btn_reset:     '↺ 回復初始值',
+      btn_copy:      '複製全部',
+      btn_copied:    '✓ 已複製',
+      btn_download:  '↓ 下載 CSV',
+      result_count:  (n) => `已產生 <span id="result-count">${n}</span> 組 MAC`,
+      more_note:     (n) => `… 僅顯示前 200 筆，下載 CSV 取得全部 ${n} 筆`,
+      err_oui:       'OUI（前三組）必須是 3 bytes，例如 00:00:00',
+      err_nic:       '起始 NIC（後三組）必須是 3 bytes，例如 00:00:00',
+      err_count:     '數量請填 1 ~ 10000',
+      err_overflow:  (n) => `起始值 + 數量超過 NIC 最大值，最多可再產生 ${n} 組`,
+    },
+    'en': {
+      subtitle:      'Generate sequential MAC addresses and export as CSV',
+      oui_label:     'OUI (First 3 octets, vendor)',
+      nic_label:     'Start NIC (Last 3 octets)',
+      hint_eg:       'e.g. 00:00:00',
+      count_label:   'Count',
+      sep_label:     'Separator',
+      case_upper:    'Uppercase (AA:BB:CC)',
+      case_lower:    'Lowercase (aa:bb:cc)',
+      btn_generate:  '▶ Generate MAC',
+      btn_reset:     '↺ Reset',
+      btn_copy:      'Copy All',
+      btn_copied:    '✓ Copied',
+      btn_download:  '↓ Download CSV',
+      result_count:  (n) => `Generated <span id="result-count">${n}</span> MACs`,
+      more_note:     (n) => `… Showing first 200. Download CSV for all ${n} entries`,
+      err_oui:       'OUI (first 3 octets) must be 3 bytes, e.g. 00:00:00',
+      err_nic:       'Start NIC (last 3 octets) must be 3 bytes, e.g. 00:00:00',
+      err_count:     'Count must be between 1 and 10000',
+      err_overflow:  (n) => `Start + count exceeds NIC max. Up to ${n} entries can be generated`,
+    }
+  };
+
+  function t() { return i18n[currentLang]; }
+
+  function setLang(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+
+    document.getElementById('lang-zhTW').classList.toggle('active', lang === 'zh-TW');
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+
+    const tr = t();
+    document.getElementById('subtitle').textContent        = tr.subtitle;
+    document.getElementById('oui-label-text').textContent  = tr.oui_label;
+    document.getElementById('nic-label-text').textContent  = tr.nic_label;
+    document.getElementById('oui-hint').textContent        = tr.hint_eg;
+    document.getElementById('nic-hint').textContent        = tr.hint_eg;
+    document.getElementById('count-label-text').textContent = tr.count_label;
+    document.getElementById('sep-label-text').textContent  = tr.sep_label;
+    document.getElementById('caseLabel').textContent       = isUpper ? tr.case_upper : tr.case_lower;
+    document.getElementById('btn-generate').textContent    = tr.btn_generate;
+    document.getElementById('btn-reset').textContent       = tr.btn_reset;
+    document.getElementById('copyBtn').textContent         = tr.btn_copy;
+    document.getElementById('btn-download').textContent    = tr.btn_download;
+
+    if (allMacs.length > 0) {
+      document.getElementById('result-count-wrap').innerHTML = tr.result_count(allMacs.length);
+      const moreNote = document.querySelector('.more-note');
+      if (moreNote) moreNote.textContent = tr.more_note(allMacs.length);
+    }
+  }
 
   function setSep(btn) {
     document.querySelectorAll('.sep-btn').forEach(b => b.classList.remove('active'));
@@ -317,10 +446,8 @@
 
   function toggleCase() {
     isUpper = !isUpper;
-    const btn = document.getElementById('caseToggle');
-    const lbl = document.getElementById('caseLabel');
-    btn.classList.toggle('on', isUpper);
-    lbl.textContent = isUpper ? '大寫輸出（AA:BB:CC）' : '小寫輸出（aa:bb:cc）';
+    document.getElementById('caseToggle').classList.toggle('on', isUpper);
+    document.getElementById('caseLabel').textContent = isUpper ? t().case_upper : t().case_lower;
   }
 
   function parsePart(str) {
@@ -343,35 +470,36 @@
 
   function generate() {
     hideError();
-    const ouiRaw = document.getElementById('oui').value.trim();
-    const nicRaw = document.getElementById('nic').value.trim();
+    const ouiRaw  = document.getElementById('oui').value.trim();
+    const nicRaw  = document.getElementById('nic').value.trim();
     const countVal = parseInt(document.getElementById('count').value, 10);
+    const tr = t();
 
     const oui = parsePart(ouiRaw);
     const nic = parsePart(nicRaw);
 
     if (oui.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(oui)) {
-      showError('OUI（前三組）必須是 3 bytes，例如 00:17:16'); return;
+      showError(tr.err_oui); return;
     }
     if (nic.length !== 6 || !/^[0-9A-Fa-f]{6}$/.test(nic)) {
-      showError('起始 NIC（後三組）必須是 3 bytes，例如 00:17:16'); return;
+      showError(tr.err_nic); return;
     }
     if (isNaN(countVal) || countVal < 1 || countVal > 10000) {
-      showError('數量請填 1 ~ 10000'); return;
+      showError(tr.err_count); return;
     }
 
     const nicBase = parseInt(nic, 16);
-    const maxNic = 0xFFFFFF;
+    const maxNic  = 0xFFFFFF;
 
     if (nicBase + countVal - 1 > maxNic) {
-      showError(`起始值 + 數量超過 NIC 最大值，最多可再產生 ${maxNic - nicBase + 1} 組`); return;
+      showError(tr.err_overflow(maxNic - nicBase + 1)); return;
     }
 
     allMacs = [];
     for (let i = 0; i < countVal; i++) {
       const nicHex = padHex(nicBase + i, 6);
-      const full = oui + nicHex;
-      const parts = [0,2,4,6,8,10].map(j => full.slice(j, j+2));
+      const full   = oui + nicHex;
+      const parts  = [0,2,4,6,8,10].map(j => full.slice(j, j+2));
       let mac = parts.join(currentSep);
       allMacs.push(isUpper ? mac.toUpperCase() : mac.toLowerCase());
     }
@@ -380,27 +508,24 @@
   }
 
   function renderResults() {
+    const tr = t();
     document.getElementById('result-card').style.display = 'block';
-    document.getElementById('result-count').textContent = allMacs.length;
+    document.getElementById('result-count-wrap').innerHTML = tr.result_count(allMacs.length);
 
     const list = document.getElementById('mac-list');
     list.innerHTML = '';
 
-    const preview = allMacs.slice(0, 200);
-    preview.forEach((mac, i) => {
+    allMacs.slice(0, 200).forEach((mac, i) => {
       const row = document.createElement('div');
       row.className = 'mac-row';
-      row.innerHTML = `
-        <span class="mac-idx">${i + 1}</span>
-        <span class="mac-addr">${mac}</span>
-      `;
+      row.innerHTML = `<span class="mac-idx">${i + 1}</span><span class="mac-addr">${mac}</span>`;
       list.appendChild(row);
     });
 
     if (allMacs.length > 200) {
       const note = document.createElement('div');
       note.className = 'more-note';
-      note.textContent = `… 僅顯示前 200 筆，下載 CSV 取得全部 ${allMacs.length} 筆`;
+      note.textContent = tr.more_note(allMacs.length);
       list.appendChild(note);
     }
 
@@ -409,11 +534,11 @@
 
   function downloadCSV() {
     if (!allMacs.length) return;
+    const oui     = parsePart(document.getElementById('oui').value);
     const content = 'MAC Address\n' + allMacs.join('\n');
-    const oui = parsePart(document.getElementById('oui').value);
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const blob    = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url     = URL.createObjectURL(blob);
+    const a       = document.createElement('a');
     a.href = url;
     a.download = `mac_${oui}_${allMacs.length}.csv`;
     document.body.appendChild(a);
@@ -422,12 +547,21 @@
     URL.revokeObjectURL(url);
   }
 
+  function resetToDefault() {
+    document.getElementById('oui').value      = '00:00:00';
+    document.getElementById('nic').value      = '00:00:00';
+    document.getElementById('oui-hint').textContent = t().hint_eg;
+    document.getElementById('nic-hint').textContent = t().hint_eg;
+    hideError();
+  }
+
   function copyAll() {
     if (!allMacs.length) return;
+    const tr = t();
     navigator.clipboard.writeText(allMacs.join('\n')).then(() => {
       const btn = document.getElementById('copyBtn');
-      btn.textContent = '✓ 已複製';
-      setTimeout(() => btn.textContent = '複製全部', 2000);
+      btn.textContent = tr.btn_copied;
+      setTimeout(() => btn.textContent = tr.btn_copy, 2000);
     });
   }
 </script>
